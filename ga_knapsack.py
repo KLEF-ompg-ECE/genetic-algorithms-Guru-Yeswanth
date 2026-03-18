@@ -23,230 +23,208 @@ import random
 import matplotlib.pyplot as plt
 import os
 
-# =============================================================================
+# ================================
 # PROBLEM DATA
-# =============================================================================
+# ================================
 
 ITEMS = [
-    # (name,                weight_kg,  value)
-    ("Water bottle",          2.0,   9),
-    ("First aid kit",         1.5,  10),
-    ("Tent",                  4.0,  10),
-    ("Sleeping bag",          3.0,   9),
-    ("Torch",                 0.5,   6),
-    ("Energy bars (x6)",      1.0,   7),
-    ("Rain jacket",           1.0,   8),
-    ("Map & compass",         0.3,   7),
-    ("Camera",                1.2,   5),
-    ("Extra clothes",         2.0,   4),
-    ("Cooking stove",         1.5,   6),
-    ("Rope (10 m)",           2.5,   5),
-    ("Sunscreen",             0.3,   4),
-    ("Trekking poles",        1.5,   5),
-    ("Power bank",            0.8,   6),
+    ("Water bottle",2.0,9),
+    ("First aid kit",1.5,10),
+    ("Tent",4.0,10),
+    ("Sleeping bag",3.0,9),
+    ("Torch",0.5,6),
+    ("Energy bars (x6)",1.0,7),
+    ("Rain jacket",1.0,8),
+    ("Map & compass",0.3,7),
+    ("Camera",1.2,5),
+    ("Extra clothes",2.0,4),
+    ("Cooking stove",1.5,6),
+    ("Rope (10 m)",2.5,5),
+    ("Sunscreen",0.3,4),
+    ("Trekking poles",1.5,5),
+    ("Power bank",0.8,6),
 ]
 
-NUM_ITEMS  = len(ITEMS)
-MAX_WEIGHT = 15.0   # kg
+NUM_ITEMS=len(ITEMS)
+MAX_WEIGHT=15.0
 
-WEIGHTS = [item[1] for item in ITEMS]
-VALUES  = [item[2] for item in ITEMS]
-NAMES   = [item[0] for item in ITEMS]
+WEIGHTS=[i[1] for i in ITEMS]
+VALUES=[i[2] for i in ITEMS]
+NAMES=[i[0] for i in ITEMS]
 
 
-# =============================================================================
-# FITNESS FUNCTION
-# =============================================================================
+# ================================
+# FITNESS
+# ================================
 
 def fitness(chromosome):
-    """
-    Score a knapsack solution. Higher = better.
 
-    If total weight exceeds MAX_WEIGHT -> score = 0 (invalid solution).
-    Otherwise -> score = total value packed.
+    w=sum(WEIGHTS[i] for i in range(NUM_ITEMS) if chromosome[i]==1)
+    v=sum(VALUES[i] for i in range(NUM_ITEMS) if chromosome[i]==1)
 
-    Args:
-        chromosome : binary list of length NUM_ITEMS
-                     1 = pack this item,  0 = leave it behind
-    """
-    total_weight = sum(WEIGHTS[i] for i in range(NUM_ITEMS) if chromosome[i] == 1)
-    total_value  = sum(VALUES[i]  for i in range(NUM_ITEMS) if chromosome[i] == 1)
-    if total_weight > MAX_WEIGHT:
+    if w>MAX_WEIGHT:
         return 0
-    return total_value
+
+    return v
 
 
-# =============================================================================
-# GA OPERATORS
-# =============================================================================
+# ================================
+# OPERATORS
+# ================================
 
-def tournament_select(population, fitnesses, k=3):
-    """Pick the best individual from k random candidates."""
-    candidates = random.sample(range(len(population)), k)
-    winner     = max(candidates, key=lambda i: fitnesses[i])
-    return population[winner][:]
+def tournament_select(population,fitnesses,k=3):
+
+    c=random.sample(range(len(population)),k)
+    w=max(c,key=lambda i:fitnesses[i])
+
+    return population[w][:]
 
 
-def crossover(p1, p2, rate=0.8):
-    """Single-point crossover: combine two parents at a random cut point."""
-    if random.random() > rate:
+def crossover(p1,p2,rate=0.8):
+
+    if random.random()>rate:
         return p1[:]
-    cut = random.randint(1, NUM_ITEMS - 1)
-    return p1[:cut] + p2[cut:]
+
+    cut=random.randint(1,NUM_ITEMS-1)
+
+    return p1[:cut]+p2[cut:]
 
 
-def mutate(chromosome, rate):
-    """
-    Bit-flip mutation: each gene flips (0->1 or 1->0) with probability rate.
+def mutate(chromosome,rate):
 
-    EXPERIMENT 2: this rate is controlled by mutation_rate in run_ga()
-    Try: 0.01  (very rare flips  - low diversity)
-         0.05  (default          - balanced)
-         0.30  (frequent flips   - too chaotic)
-    """
-    result = chromosome[:]
+    r=chromosome[:]
+
     for i in range(NUM_ITEMS):
-        if random.random() < rate:
-            result[i] = 1 - result[i]
-    return result
+
+        if random.random()<rate:
+            r[i]=1-r[i]
+
+    return r
 
 
-# =============================================================================
-# GENETIC ALGORITHM
-# =============================================================================
+# ================================
+# GA
+# ================================
 
 def run_ga(
-    population_size = 20,
-    generations     = 50,
-    crossover_rate  = 0.8,
-    mutation_rate   = 0.05,   # <- EXPERIMENT 2: change this value
-    tournament_size = 3,
-    seed            = 42,
+    population_size=20,
+    generations=50,
+    crossover_rate=0.8,
+    mutation_rate=0.05,
+    tournament_size=3,
+    seed=42,
 ):
-    """
-    Run the Genetic Algorithm to maximise knapsack value.
 
-    KEY PARAMETER
-    -------------
-    mutation_rate : probability of flipping each bit each generation
-                    too low  (0.01) -> population loses diversity, gets stuck
-                    balanced (0.05) -> good exploration and exploitation
-                    too high (0.30) -> too random, destroys good solutions
-
-    Returns
-    -------
-    best_chromosome : binary list
-    best_value      : int
-    value_log       : list of best value per generation (for plotting)
-    """
     random.seed(seed)
 
-    population = [
-        [random.randint(0, 1) for _ in range(NUM_ITEMS)]
+    population=[
+        [random.randint(0,1) for _ in range(NUM_ITEMS)]
         for _ in range(population_size)
     ]
 
-    best_chromosome = None
-    best_value      = -1
-    value_log       = []
+    best=None
+    best_val=-1
+    log=[]
 
     for _ in range(generations):
-        fitnesses = [fitness(c) for c in population]
 
-        gen_best_i = max(range(population_size), key=lambda i: fitnesses[i])
-        if fitnesses[gen_best_i] > best_value:
-            best_value      = fitnesses[gen_best_i]
-            best_chromosome = population[gen_best_i][:]
+        fitnesses=[fitness(c) for c in population]
 
-        value_log.append(best_value)
+        g=max(range(population_size),key=lambda i:fitnesses[i])
 
-        # Elitism: always keep the best
-        next_gen = [best_chromosome[:]]
-        while len(next_gen) < population_size:
-            p1    = tournament_select(population, fitnesses, tournament_size)
-            p2    = tournament_select(population, fitnesses, tournament_size)
-            child = crossover(p1, p2, crossover_rate)
-            child = mutate(child, mutation_rate)
+        if fitnesses[g]>best_val:
+            best_val=fitnesses[g]
+            best=population[g][:]
+
+        log.append(best_val)
+
+        next_gen=[best[:]]
+
+        while len(next_gen)<population_size:
+
+            p1=tournament_select(population,fitnesses)
+            p2=tournament_select(population,fitnesses)
+
+            child=crossover(p1,p2)
+            child=mutate(child,mutation_rate)
+
             next_gen.append(child)
 
-        population = next_gen
+        population=next_gen
 
-    return best_chromosome, best_value, value_log
-
-
-# =============================================================================
-# OUTPUT HELPERS
-# =============================================================================
-
-def print_solution(chromosome):
-    total_weight = sum(WEIGHTS[i] for i in range(NUM_ITEMS) if chromosome[i] == 1)
-    total_value  = sum(VALUES[i]  for i in range(NUM_ITEMS) if chromosome[i] == 1)
-    packed = [NAMES[i] for i in range(NUM_ITEMS) if chromosome[i] == 1]
-    valid  = total_weight <= MAX_WEIGHT
-    print("\n  Best Packing List")
-    print("-" * 38)
-    for item in packed:
-        print(f"  + {item}")
-    print("-" * 38)
-    print(f"  Weight : {total_weight:.1f} / {MAX_WEIGHT} kg")
-    print(f"  Value  : {total_value}")
-    print(f"  Valid  : {'Yes' if valid else 'No - Over limit!'}\n")
+    return best,best_val,log
 
 
-def save_plot(value_log, filename, title):
-    os.makedirs("plots", exist_ok=True)
-    plt.figure(figsize=(9, 4))
-    plt.plot(value_log, color="seagreen", linewidth=2, marker="o", markersize=3)
+# ================================
+# PRINT
+# ================================
+
+def print_solution(ch):
+
+    w=sum(WEIGHTS[i] for i in range(NUM_ITEMS) if ch[i]==1)
+    v=sum(VALUES[i] for i in range(NUM_ITEMS) if ch[i]==1)
+
+    print("\nBest Packing List")
+
+    for i in range(NUM_ITEMS):
+        if ch[i]==1:
+            print("+",NAMES[i])
+
+    print("Weight:",w,"/",MAX_WEIGHT)
+    print("Value:",v)
+
+
+# ================================
+# PLOT (COLAB FIX)
+# ================================
+
+def save_plot(log,name,title):
+
+    os.makedirs("plots",exist_ok=True)
+
+    plt.figure(figsize=(6,4))
+    plt.plot(log,marker="o")
+    plt.title(title)
     plt.xlabel("Generation")
-    plt.ylabel("Best Value")
-    plt.title(f"GA Convergence - {title}")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(filename, dpi=150)
+    plt.ylabel("Value")
+
+    plt.savefig(name)
+    plt.show()   # important for colab
     plt.close()
-    print(f"  Saved -> {filename}")
 
 
-# =============================================================================
-# RUN YOUR EXPERIMENTS HERE
-# =============================================================================
+# ================================
+# RUN
+# ================================
 
-if __name__ == "__main__":
+# EXP 1
+best,val,log=run_ga()
 
-    # ==========================================================================
-    # EXPERIMENT 1 - Baseline
-    # Run as-is. Do NOT change any parameters here.
-    # ==========================================================================
-    print("=" * 48)
-    print("  EXPERIMENT 1 - Baseline")
-    print("=" * 48)
+print_solution(best)
+print("Final:",val)
 
-    best_chr, best_val, val_log = run_ga(
-        population_size=20, generations=50,
-        crossover_rate=0.8, mutation_rate=0.05,
-        tournament_size=3, seed=42
-    )
-    print_solution(best_chr)
-    print(f"  Generations run : {len(val_log)}")
-    print(f"  Value at gen 1  : {val_log[0]}")
-    print(f"  Final best value: {best_val}")
-    save_plot(val_log, "plots/experiment_1.png",
-              "Baseline  mutation_rate=0.05")
+save_plot(log,"plots/experiment_1.png","baseline")
 
-    # ==========================================================================
-    # EXPERIMENT 2 - Effect of Mutation Rate
-    # TODO: Copy this block THREE times below (for 0.01, 0.05, and 0.30).
-    #       Change mutation_rate and the plot filename each time.
-    #       Record results in README.md.
-    # ==========================================================================
 
-    # --- Copy and edit below this line ---
+# EXP 2
 
-    # chr2, val2, vl2 = run_ga(
-    #     population_size=20, generations=50,
-    #     crossover_rate=0.8, mutation_rate=0.01,    # <- change this
-    #     tournament_size=3, seed=42
-    # )
-    # print_solution(chr2)
-    # print(f"  Final best value: {val2}")
-    # save_plot(vl2, "plots/experiment_2a.png", "mutation_rate=0.01")   # <- change filename
+c2,v2,l2=run_ga(mutation_rate=0.01)
+print_solution(c2)
+print("Final:",v2)
+save_plot(l2,"plots/experiment_2a.png","0.01")
+
+
+c3,v3,l3=run_ga(mutation_rate=0.05)
+print_solution(c3)
+print("Final:",v3)
+save_plot(l3,"plots/experiment_2b.png","0.05")
+
+
+c4,v4,l4=run_ga(mutation_rate=0.30)
+print_solution(c4)
+print("Final:",v4)
+save_plot(l4,"plots/experiment_2c.png","0.30")
+
+
+# show files
+print(os.listdir("plots"))
