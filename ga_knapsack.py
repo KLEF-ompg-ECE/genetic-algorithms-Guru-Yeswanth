@@ -23,208 +23,320 @@ import random
 import matplotlib.pyplot as plt
 import os
 
-# ================================
+# =============================================================================
 # PROBLEM DATA
-# ================================
+# =============================================================================
 
 ITEMS = [
-    ("Water bottle",2.0,9),
-    ("First aid kit",1.5,10),
-    ("Tent",4.0,10),
-    ("Sleeping bag",3.0,9),
-    ("Torch",0.5,6),
-    ("Energy bars (x6)",1.0,7),
-    ("Rain jacket",1.0,8),
-    ("Map & compass",0.3,7),
-    ("Camera",1.2,5),
-    ("Extra clothes",2.0,4),
-    ("Cooking stove",1.5,6),
-    ("Rope (10 m)",2.5,5),
-    ("Sunscreen",0.3,4),
-    ("Trekking poles",1.5,5),
-    ("Power bank",0.8,6),
+    ("Water bottle",          2.0,   9),
+    ("First aid kit",         1.5,  10),
+    ("Tent",                  4.0,  10),
+    ("Sleeping bag",          3.0,   9),
+    ("Torch",                 0.5,   6),
+    ("Energy bars (x6)",      1.0,   7),
+    ("Rain jacket",           1.0,   8),
+    ("Map & compass",         0.3,   7),
+    ("Camera",                1.2,   5),
+    ("Extra clothes",         2.0,   4),
+    ("Cooking stove",         1.5,   6),
+    ("Rope (10 m)",           2.5,   5),
+    ("Sunscreen",             0.3,   4),
+    ("Trekking poles",        1.5,   5),
+    ("Power bank",            0.8,   6),
 ]
 
-NUM_ITEMS=len(ITEMS)
-MAX_WEIGHT=15.0
+NUM_ITEMS  = len(ITEMS)
+MAX_WEIGHT = 15.0
 
-WEIGHTS=[i[1] for i in ITEMS]
-VALUES=[i[2] for i in ITEMS]
-NAMES=[i[0] for i in ITEMS]
+WEIGHTS = [item[1] for item in ITEMS]
+VALUES  = [item[2] for item in ITEMS]
+NAMES   = [item[0] for item in ITEMS]
 
 
-# ================================
-# FITNESS
-# ================================
+# =============================================================================
+# FITNESS FUNCTION
+# =============================================================================
 
 def fitness(chromosome):
 
-    w=sum(WEIGHTS[i] for i in range(NUM_ITEMS) if chromosome[i]==1)
-    v=sum(VALUES[i] for i in range(NUM_ITEMS) if chromosome[i]==1)
+    total_weight = sum(
+        WEIGHTS[i] for i in range(NUM_ITEMS)
+        if chromosome[i] == 1
+    )
 
-    if w>MAX_WEIGHT:
+    total_value = sum(
+        VALUES[i] for i in range(NUM_ITEMS)
+        if chromosome[i] == 1
+    )
+
+    if total_weight > MAX_WEIGHT:
         return 0
 
-    return v
+    return total_value
 
 
-# ================================
-# OPERATORS
-# ================================
+# =============================================================================
+# GA OPERATORS
+# =============================================================================
 
-def tournament_select(population,fitnesses,k=3):
+def tournament_select(population, fitnesses, k=3):
 
-    c=random.sample(range(len(population)),k)
-    w=max(c,key=lambda i:fitnesses[i])
+    candidates = random.sample(
+        range(len(population)),
+        k
+    )
 
-    return population[w][:]
+    winner = max(
+        candidates,
+        key=lambda i: fitnesses[i]
+    )
+
+    return population[winner][:]
 
 
-def crossover(p1,p2,rate=0.8):
+def crossover(p1, p2, rate=0.8):
 
-    if random.random()>rate:
+    if random.random() > rate:
         return p1[:]
 
-    cut=random.randint(1,NUM_ITEMS-1)
+    cut = random.randint(
+        1,
+        NUM_ITEMS - 1
+    )
 
-    return p1[:cut]+p2[cut:]
+    return p1[:cut] + p2[cut:]
 
 
-def mutate(chromosome,rate):
+def mutate(chromosome, rate):
 
-    r=chromosome[:]
+    result = chromosome[:]
 
     for i in range(NUM_ITEMS):
 
-        if random.random()<rate:
-            r[i]=1-r[i]
+        if random.random() < rate:
+            result[i] = 1 - result[i]
 
-    return r
+    return result
 
 
-# ================================
-# GA
-# ================================
+# =============================================================================
+# GENETIC ALGORITHM
+# =============================================================================
 
 def run_ga(
-    population_size=20,
-    generations=50,
-    crossover_rate=0.8,
-    mutation_rate=0.05,
-    tournament_size=3,
-    seed=42,
+    population_size = 20,
+    generations     = 50,
+    crossover_rate  = 0.8,
+    mutation_rate   = 0.05,
+    tournament_size = 3,
+    seed            = 42,
 ):
 
     random.seed(seed)
 
-    population=[
-        [random.randint(0,1) for _ in range(NUM_ITEMS)]
+    population = [
+        [random.randint(0, 1) for _ in range(NUM_ITEMS)]
         for _ in range(population_size)
     ]
 
-    best=None
-    best_val=-1
-    log=[]
+    best_chromosome = None
+    best_value      = -1
+    value_log       = []
 
     for _ in range(generations):
 
-        fitnesses=[fitness(c) for c in population]
+        fitnesses = [
+            fitness(c)
+            for c in population
+        ]
 
-        g=max(range(population_size),key=lambda i:fitnesses[i])
+        gen_best_i = max(
+            range(population_size),
+            key=lambda i: fitnesses[i]
+        )
 
-        if fitnesses[g]>best_val:
-            best_val=fitnesses[g]
-            best=population[g][:]
+        if fitnesses[gen_best_i] > best_value:
 
-        log.append(best_val)
+            best_value = fitnesses[gen_best_i]
 
-        next_gen=[best[:]]
+            best_chromosome = population[gen_best_i][:]
 
-        while len(next_gen)<population_size:
+        value_log.append(best_value)
 
-            p1=tournament_select(population,fitnesses)
-            p2=tournament_select(population,fitnesses)
+        next_gen = [best_chromosome[:]]
 
-            child=crossover(p1,p2)
-            child=mutate(child,mutation_rate)
+        while len(next_gen) < population_size:
+
+            p1 = tournament_select(
+                population,
+                fitnesses,
+                tournament_size
+            )
+
+            p2 = tournament_select(
+                population,
+                fitnesses,
+                tournament_size
+            )
+
+            child = crossover(
+                p1,
+                p2,
+                crossover_rate
+            )
+
+            child = mutate(
+                child,
+                mutation_rate
+            )
 
             next_gen.append(child)
 
-        population=next_gen
+        population = next_gen
 
-    return best,best_val,log
-
-
-# ================================
-# PRINT
-# ================================
-
-def print_solution(ch):
-
-    w=sum(WEIGHTS[i] for i in range(NUM_ITEMS) if ch[i]==1)
-    v=sum(VALUES[i] for i in range(NUM_ITEMS) if ch[i]==1)
-
-    print("\nBest Packing List")
-
-    for i in range(NUM_ITEMS):
-        if ch[i]==1:
-            print("+",NAMES[i])
-
-    print("Weight:",w,"/",MAX_WEIGHT)
-    print("Value:",v)
+    return best_chromosome, best_value, value_log
 
 
-# ================================
-# PLOT (COLAB FIX)
-# ================================
+# =============================================================================
+# OUTPUT HELPERS
+# =============================================================================
 
-def save_plot(log,name,title):
+def print_solution(chromosome):
 
-    os.makedirs("plots",exist_ok=True)
+    total_weight = sum(
+        WEIGHTS[i]
+        for i in range(NUM_ITEMS)
+        if chromosome[i] == 1
+    )
 
-    plt.figure(figsize=(6,4))
-    plt.plot(log,marker="o")
-    plt.title(title)
+    total_value = sum(
+        VALUES[i]
+        for i in range(NUM_ITEMS)
+        if chromosome[i] == 1
+    )
+
+    packed = [
+        NAMES[i]
+        for i in range(NUM_ITEMS)
+        if chromosome[i] == 1
+    ]
+
+    valid = total_weight <= MAX_WEIGHT
+
+    print("\n  Best Packing List")
+    print("-" * 38)
+
+    for item in packed:
+        print("  +", item)
+
+    print("-" * 38)
+
+    print(
+        f"  Weight : {total_weight:.1f} / {MAX_WEIGHT} kg"
+    )
+
+    print(
+        f"  Value  : {total_value}"
+    )
+
+    print(
+        f"  Valid  : {'Yes' if valid else 'No'}\n"
+    )
+
+
+def save_plot(value_log, filename, title):
+
+    os.makedirs("plots", exist_ok=True)
+
+    plt.figure(figsize=(9,4))
+
+    plt.plot(
+        value_log,
+        linewidth=2
+    )
+
     plt.xlabel("Generation")
-    plt.ylabel("Value")
+    plt.ylabel("Best Value")
 
-    plt.savefig(name)
-    plt.show()   # important for colab
+    plt.title(title)
+
+    plt.grid(True)
+
+    plt.tight_layout()
+
+    plt.savefig(filename)
+
     plt.close()
 
+    print("Saved ->", filename)
 
-# ================================
+
+# =============================================================================
 # RUN
-# ================================
+# =============================================================================
 
-# EXP 1
-best,val,log=run_ga()
+if __name__ == "__main__":
 
-print_solution(best)
-print("Final:",val)
+    # EXPERIMENT 1
 
-save_plot(log,"plots/experiment_1.png","baseline")
+    best_chr, best_val, val_log = run_ga(
+        population_size=20,
+        generations=50,
+        crossover_rate=0.8,
+        mutation_rate=0.05,
+        tournament_size=3,
+        seed=42
+    )
 
+    print_solution(best_chr)
 
-# EXP 2
+    print("Generations:", len(val_log))
+    print("Gen1:", val_log[0])
+    print("Final:", best_val)
 
-c2,v2,l2=run_ga(mutation_rate=0.01)
-print_solution(c2)
-print("Final:",v2)
-save_plot(l2,"plots/experiment_2a.png","0.01")
-
-
-c3,v3,l3=run_ga(mutation_rate=0.05)
-print_solution(c3)
-print("Final:",v3)
-save_plot(l3,"plots/experiment_2b.png","0.05")
-
-
-c4,v4,l4=run_ga(mutation_rate=0.30)
-print_solution(c4)
-print("Final:",v4)
-save_plot(l4,"plots/experiment_2c.png","0.30")
+    save_plot(
+        val_log,
+        "plots/experiment_1.png",
+        "baseline"
+    )
 
 
-# show files
-print(os.listdir("plots"))
+    # EXPERIMENT 2
+
+    chr2, val2, vl2 = run_ga(
+        mutation_rate=0.01
+    )
+
+    print_solution(chr2)
+
+    save_plot(
+        vl2,
+        "plots/experiment_2a.png",
+        "0.01"
+    )
+
+
+    chr3, val3, vl3 = run_ga(
+        mutation_rate=0.05
+    )
+
+    print_solution(chr3)
+
+    save_plot(
+        vl3,
+        "plots/experiment_2b.png",
+        "0.05"
+    )
+
+
+    chr4, val4, vl4 = run_ga(
+        mutation_rate=0.30
+    )
+
+    print_solution(chr4)
+
+    save_plot(
+        vl4,
+        "plots/experiment_2c.png",
+        "0.30"
+    )
