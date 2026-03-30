@@ -1,9 +1,9 @@
 # Assignment 2 — Genetic Algorithm: Knapsack Problem
 ## Observation Report
 
-**Student Name  :** Y Vignesh
-**Student ID    :** 2310040087
-**Date Submitted:** 2026-03-25  
+**Student Name  :** D Guru Yeswanth
+**Student ID    :** 2310040085
+**Date Submitted:** 30/03/2026  
 
 ---
 
